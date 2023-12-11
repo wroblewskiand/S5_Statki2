@@ -16,8 +16,7 @@ class Statki(GridLayout):
         self.ids['startGameButton'].disabled = True
         self.ids['gameId'].disabled = True
         print("Click")
-        pass
-
+        
 class StatkiApp(App):
     
     def build(self):
