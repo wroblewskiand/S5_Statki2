@@ -3,9 +3,9 @@ import sys
 import time
 import websockets
 
-# sleepTime = float(sys.argv[1])
 
 message = sys.argv[1]
+
 
 async def hello():
     uri = "ws://localhost:8765"
@@ -18,7 +18,6 @@ async def hello():
             msg = await websocket.recv()
             print("Recived: ", msg)
             
-            # await asyncio.sleep(1)
-            # await asyncio.sleep(sleepTime)
+
 
 asyncio.get_event_loop().run_until_complete(hello())

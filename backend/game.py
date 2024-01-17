@@ -1,4 +1,7 @@
 
+import asyncio
+
+
 class Game:
     players = []
 
@@ -6,7 +9,7 @@ class Game:
         self.players = []
 
     def add_player(self, websocket):
-        self.player.append(websocket)
+        self.players.append(websocket)
 
     async def handle(self, websocket, message):
         await self.sendToOther(websocket, message)
@@ -15,4 +18,5 @@ class Game:
         for player in self.players:
             if player == websocket:
                 continue
+            await asyncio.sleep(0.5)
             await player.send(message)
