@@ -92,7 +92,3 @@ class StatkiApp(App):
     
     def build(self):
         return Statki()
-
-if __name__ == '__main__':
-    Config.read('config.ini')
-    StatkiApp().run()
