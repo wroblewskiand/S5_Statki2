@@ -6,18 +6,14 @@ import websockets
 from game import Game
 
 
-
 class Server:
 
     clearInterval = 5
-    # clients = {}
     games = {}              # Id, obiekt gry
     websocketToGame = {}    # websocket, Id gry
 
     gameKeys = ['A', 'B', 'C']
 
-    # def __init__(self):
-    #     self.clients = {}
 
     async def clearOldGames(self):
         while True:
