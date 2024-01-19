@@ -1,17 +1,24 @@
+import asyncio
+import plane
+
 from kivy import Config
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 
-import plane
+from client import Client
 from gamebutton import GameButton
+from message import Message
+
 
 class Statki(GridLayout):
 
-    isGameStarted = False
-
     def __init__(self, **kwargs):
         super(Statki, self).__init__(**kwargs)
+        self.isGameStarted = False
+        self.client = Client(self.onMessage)
         self.ids['przeciwnik'].disabled = True
+        self.lastX = 0
+        self.lastY = 0
 
         for c1 in self.children:
             for c2 in c1.children:
@@ -19,6 +26,11 @@ class Statki(GridLayout):
                     for c4 in c3.children:
                         if isinstance(c4, GameButton):
                             c4.sendMessage = self.sendMessage
+                            c4.saveLastHitPosition = self.saveLastHitPosition
+
+    def saveLastHitPosition(self, x, y):
+        self.lastX = x
+        self.lastY = y
 
     def startButtonClick(self):
         self.ids['gracz'].disabled = True
@@ -27,23 +39,37 @@ class Statki(GridLayout):
         self.ids['gameId'].disabled = True
         print("Click")
         self.isGameStarted = True
+        self.sendMessage(Message.PlayerConnectedMessage())
 
-    def onMessage(self, message):
-        x = int(message['x'])
-        y = int(message['y'])
-        self.ids['gracz'].ids[str(y)].ids[str(x)].setWasHit()
-        if self.isShip(x, y) and self.isSunken(x, y, {}):
-            self.sank(x, y, {})
-        elif self.isShip(x, y):
-            self.ids['przeciwnik'].ids[str(y)].ids[str(x)].hit()
-        else: self.ids['przeciwnik'].ids[str(y)].ids[str(x)].miss()
+    def onMessage(self, message: Message.BaseMessage):
+
+        if message.type == Message.BaseMessage.ATTACK:
+            x = message.x
+            y = message.y
+            self.ids['gracz'].ids[str(y)].ids[str(x)].setWasHit()
+
+            if self.isShip(x, y) and self.isSunken(x, y, {}):
+                self.sank(x, y, {}, 'gracz')
+                self.sendMessage(Message.SankMessage())
+            elif self.isShip(x, y):
+                # self.ids['przeciwnik'].ids[str(y)].ids[str(x)].hit()
+                self.sendMessage(Message.HitMessage())
+            else: 
+                # self.ids['przeciwnik'].ids[str(y)].ids[str(x)].miss()
+                self.sendMessage(Message.MissMessage())
+        elif message.type == Message.BaseMessage.SANK:
+            self.sank(self.lastX, self.lastY, {}, 'przeciwnik')
+        elif message.type == Message.BaseMessage.HIT:
+            self.ids['przeciwnik'].ids[str(self.lastY)].ids[str(self.lastX)].hit()
+        elif message.type == Message.BaseMessage.MISS:
+            self.ids['przeciwnik'].ids[str(self.lastY)].ids[str(self.lastX)].miss()
 
     def sendMessage(self, message):
         if not self.isGameStarted:
             return
-        
-        print(message)
-        self.onMessage(message)
+        self.client.sendMessage(message)
+        # print(message)
+        # self.onMessage(message)
 
     def isShip(self, x: int, y: int):
         # print(f'y: {y}, x: {y}')
@@ -74,7 +100,7 @@ class Statki(GridLayout):
 
         return True
 
-    def sank(self, x, y, visited):
+    def sank(self, x, y, visited, tag = 'przeciwnik'):
         if (x, y) not in visited:
             visited[(x, y)] = True
             for i in range(y-1, y+2):
@@ -83,12 +109,20 @@ class Statki(GridLayout):
                 for j in range(x-1, x+2):
                     if j == 0 or j == 11:
                         continue
-                    self.ids['gracz'].ids[str(y)].ids[str(x)].setWasHit()
-                    self.ids['przeciwnik'].ids[str(y)].ids[str(x)].setWasHit()
-                    if self.ids['przeciwnik'].ids[str(y)].ids[str(x)].isShip:
-                        self.sank(j, i, visited)
+                    self.ids[tag].ids[str(y)].ids[str(x)].setWasHit()
+                    if self.ids[tag].ids[str(y)].ids[str(x)].isShip:
+                        self.sank(j, i, visited, tag)
+
 
 class StatkiApp(App):
     
-    def build(self):
-        return Statki()
+    async def async_run(self, async_lib=None):
+        self.load_config()
+        self.load_kv(filename=self.kv_file)
+        self.root = Statki()
+        
+        await asyncio.gather(super(StatkiApp, self).async_run(async_lib=async_lib), self.root.client.run())
+
+    def stop(self):
+        self.root.client.stop()
+        super(StatkiApp, self).stop()   

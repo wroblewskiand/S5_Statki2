@@ -1,17 +1,21 @@
 from kivy.uix.button import Button
 from kivy.properties import BooleanProperty, DictProperty, ObjectProperty
 
+from message import Message
+
 class GameButton(Button):
     coordinate = DictProperty({"x": 0, "y": 0})
     isShip = BooleanProperty(False)
     wasHit = BooleanProperty(False)
     sendMessage = ObjectProperty()
+    saveLastHitPosition = ObjectProperty()
 
     def on_release(self):
         super(GameButton, self).on_release()
         self.isShip = not self.isShip
         self.updateColor()
-        self.sendMessage(self.coordinate)
+        self.sendMessage(Message.AttackMessage(x = self.coordinate['x'], y = self.coordinate['y']))
+        self.saveLastHitPosition(self.coordinate['x'], self.coordinate['y'])
 
     def setWasHit(self, value=True):
         self.wasHit = value
